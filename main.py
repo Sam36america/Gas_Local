@@ -58,44 +58,34 @@ def registro_existe(df, cnpj, data_inicio, data_fim, valor_total):
     return not df[(df['CNPJ'] == cnpj) & (df['DATA INICIO'] == data_inicio) & (df['DATA FIM'] == data_fim) & (df['VALOR TOTAL'] == valor_total)].empty
 
 def todos_campos_preenchidos(informacoes):
-    campos_obrigatorios = ['cnpj', 'valor_total', 'volume_total', 'data_emissao', 'data_inicio', 'data_fim', 'numero_fatura', 'valor_icms']
-    for campo in campos_obrigatorios:
-        if campo not in informacoes or not informacoes[campo]:
-            print(f"Campo obrigatório '{campo}' está faltando ou vazio.")
-            return False
     return True
 
 def adicionar_na_planilha(informacoes, caminho_planilha, nome_arquivo):
-    if not todos_campos_preenchidos(informacoes):
-        print("Não foi possível adicionar à planilha devido a campos faltantes ou vazios.")
-        return False
-
     try:
         df = pd.read_excel(caminho_planilha)
     except FileNotFoundError:
         print(f"O arquivo '{caminho_planilha}' não foi encontrado. Criando um novo.")
         df = pd.DataFrame(columns=['CNPJ', 'VALOR TOTAL', 'VOLUME TOTAL', 'DATA EMISSAO', 'DATA INICIO', 'DATA FIM', 'NUMERO FATURA', 'VALOR ICMS', 'DISTRIBUIDORA', 'NOME DO ARQUIVO'])
     
-    cnpj = informacoes['cnpj']
-    data_inicio = informacoes['data_inicio']
-    data_fim = informacoes['data_fim']
-    valor_total = pd.to_numeric(informacoes['valor_total'].replace('.', '').replace(',', '.'))
-    volume_total = informacoes['volume_total'] 
-    valor_icms = pd.to_numeric(informacoes['valor_icms'].replace('.', '').replace(',', '.'))
+    cnpj = informacoes.get('cnpj', '')
+    data_inicio = informacoes.get('data_inicio', '')
+    data_fim = informacoes.get('data_fim', '')
+    valor_total = pd.to_numeric(informacoes.get('valor_total', '0').replace('.', '').replace(',', '.'), errors='coerce')
+    volume_total = informacoes.get('volume_total', 0)
+    valor_icms = pd.to_numeric(informacoes.get('valor_icms', '0').replace('.', '').replace(',', '.'), errors='coerce')
 
     if registro_existe(df, cnpj, data_inicio, data_fim, valor_total):
         print(f"Registro duplicado encontrado. Não será inserido.")
         return False 
     
-    
     nova_linha = pd.DataFrame([{
         'CNPJ': cnpj,
         'VALOR TOTAL': valor_total,
         'VOLUME TOTAL': volume_total,
-        'DATA EMISSAO': informacoes['data_emissao'],
+        'DATA EMISSAO': informacoes.get('data_emissao', ''),
         'DATA INICIO': data_inicio,
         'DATA FIM': data_fim,
-        'NUMERO FATURA': informacoes['numero_fatura'],
+        'NUMERO FATURA': informacoes.get('numero_fatura', ''),
         'VALOR ICMS': valor_icms,
         'DISTRIBUIDORA': DIST,
         'NOME DO ARQUIVO': nome_arquivo
@@ -141,8 +131,8 @@ def extrair_informacoes_xml(xml_root):
     data_emissao = datetime.fromisoformat(data_emissao_iso)
     data_emissao_formatada = data_emissao.strftime('%d/%m/%Y')
     
-    # Clonar a data de emissão para data_inicio
-    data_inicio = data_emissao_formatada
+    # Definir a data de início como o primeiro dia do mês da data de emissão
+    data_inicio = data_emissao.replace(day=1).strftime('%d/%m/%Y')
     
     # Calcular o último dia do mês para data_fim
     next_month = data_emissao.replace(day=28) + timedelta(days=4)
